@@ -1,0 +1,15 @@
+{
+  "name": "convey",
+  "version": "0.0.0",
+  "description": "A serverless gateway to an Elasticsearch instance.",
+  "main": "handler.js",
+  "dependencies": {
+    "elasticsearch": "^12.1.3"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Christopher Su <hello@christopher.su>",
+  "license": "AGPL-3.0"
+}
