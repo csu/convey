@@ -46,6 +46,8 @@ module.exports.index = (event, context, callback) => {
     return;
   }
 
+  delete event.secret;
+
   if (typeof event.index === 'undefined' || typeof event.type === 'undefined') {
     const response = {
       statusCode: 400,
