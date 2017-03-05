@@ -6,24 +6,24 @@ var client = new elasticsearch.Client({
   httpAuth: process.env.ES_HTTP_AUTH
 });
 
-var indexSuccess = (event, context, callback) => {
+var indexSuccess = (doc, callback) => {
   const response = {
     statusCode: 200,
     body: JSON.stringify({
       message: 'Index succeeded.',
-      input: event,
+      doc: doc,
     }),
   };
 
   callback(null, response);
 }
 
-var indexFailure = (event, context, callback) => {
+var indexFailure = (doc, callback, error) => {
   const response = {
     statusCode: 400,
     body: JSON.stringify({
       message: 'Index failed with error  ' + error,
-      input: event,
+      doc: doc,
     }),
   };
 
@@ -70,9 +70,9 @@ module.exports.index = (event, context, callback) => {
 
   client.index(doc, function (error, response) {
     if (error) {
-      indexFailure(event, callback, error);
+      indexFailure(doc, callback, error);
     } else {
-      indexSuccess(event, callback);
+      indexSuccess(doc, callback);
     }
   });
 };
