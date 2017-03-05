@@ -3,11 +3,16 @@ service: convey
 provider:
   name: YOUR_PROVIDER
   runtime: nodejs4.3
+  memorySize: 256
 
 stage: prod
 region: YOUR_REGION
 
 functions:
-  forward:
-    handler: handler.forward
+  index:
+    handler: handler.index
     environment: ${file(env.yml)}
+    events:
+      - http:
+          path: index
+          method: post
