@@ -43,6 +43,7 @@ module.exports.index = (event, context, callback) => {
     callback(null, response);
     return;
   }
+  
   var doc = {body: event};
   doc.index = doc.body.index;
   doc.type = doc.body.type;
