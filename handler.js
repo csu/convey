@@ -16,7 +16,7 @@ var indexSuccess = (doc, callback) => {
   };
 
   callback(null, response);
-}
+};
 
 var indexFailure = (doc, callback, error) => {
   const response = {
@@ -28,18 +28,14 @@ var indexFailure = (doc, callback, error) => {
   };
 
   callback(null, response);
-}
+};
 
 module.exports.index = (event, context, callback) => {
-  if (typeof process.env.CONVEY_SECRET !== 'undefined' &&
-      process.env.CONVEY_SECRET !== '' &&
-        (typeof event.secret === 'undefined' ||
-          event.secret !== process.env.CONVEY_SECRET)) {
+  if (!event.body) {
     const response = {
-      statusCode: 403,
+      statusCode: 500,
       body: JSON.stringify({
-        message: 'Unauthorized',
-        input: event,
+        message: 'Invalid input'
       }),
     };
 
@@ -47,14 +43,31 @@ module.exports.index = (event, context, callback) => {
     return;
   }
 
-  delete event.secret;
+  var body = event.body;
 
-  if (typeof event.index === 'undefined' || typeof event.type === 'undefined') {
+  if (typeof process.env.CONVEY_SECRET !== 'undefined' &&
+      process.env.CONVEY_SECRET &&
+        (typeof body.secret === 'undefined' ||
+          body.secret !== process.env.CONVEY_SECRET)) {
+    const response = {
+      statusCode: 403,
+      body: JSON.stringify({
+        message: 'Unauthorized key'
+      }),
+    };
+
+    callback(null, response);
+    return;
+  }
+
+  delete body.secret;
+
+  if (typeof body.index === 'undefined' || typeof body.type === 'undefined') {
     const response = {
       statusCode: 400,
       body: JSON.stringify({
         message: 'Must specify index and type in input',
-        input: event,
+        input: body,
       }),
     };
 
@@ -62,7 +75,7 @@ module.exports.index = (event, context, callback) => {
     return;
   }
   
-  var doc = {body: event};
+  var doc = {body: body};
   doc.index = doc.body.index;
   doc.type = doc.body.type;
   delete doc.body.index;
