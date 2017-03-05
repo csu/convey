@@ -31,6 +31,21 @@ var indexFailure = (event, context, callback) => {
 }
 
 module.exports.index = (event, context, callback) => {
+  if (typeof process.env.CONVEY_SECRET === 'undefined' ||
+      typeof event.secret === 'undefined' ||
+      event.secret !== process.env.CONVEY_SECRET) {
+    const response = {
+      statusCode: 403,
+      body: JSON.stringify({
+        message: 'Unauthorized',
+        input: event,
+      }),
+    };
+
+    callback(null, response);
+    return;
+  }
+
   if (typeof event.index === 'undefined' || typeof event.type === 'undefined') {
     const response = {
       statusCode: 400,
