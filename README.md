@@ -5,7 +5,8 @@ Convey is a serverless gateway to an Elasticsearch instance.
 ### `POST /index`
 Indexes a document in Elasticsearch.
 
-#### Body (`JSON`)
+#### Example
+##### Request Body (`JSON`)
 ```json
 {
     "secret": "your-secret-here",
@@ -17,7 +18,7 @@ Indexes a document in Elasticsearch.
 }
 ```
 
-#### Result
+##### Result
 Indexes the following document in Elasticsearch:
 
 ```json
