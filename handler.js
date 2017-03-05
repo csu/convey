@@ -2,15 +2,15 @@
 
 var elasticsearch = require('elasticsearch');
 var client = new elasticsearch.Client({
-  host: process.env.ES_HOST
+  host: process.env.ES_HOST,
   httpAuth: process.env.ES_HTTP_AUTH
 });
 
-var pingSuccess = (event, context, callback) => {
+var indexSuccess = (event, context, callback) => {
   const response = {
     statusCode: 200,
     body: JSON.stringify({
-      message: 'Cluster is up',
+      message: 'Index succeeded.',
       input: event,
     }),
   };
@@ -18,11 +18,11 @@ var pingSuccess = (event, context, callback) => {
   callback(null, response);
 }
 
-var pingFailure = (event, context, callback) => {
+var indexFailure = (event, context, callback) => {
   const response = {
     statusCode: 400,
     body: JSON.stringify({
-      message: 'Cluster is down',
+      message: 'Index failed with error  ' + error,
       input: event,
     }),
   };
@@ -30,15 +30,30 @@ var pingFailure = (event, context, callback) => {
   callback(null, response);
 }
 
-module.exports.forward = (event, context, callback) => {
-  client.ping({
-    // ping usually has a 3000ms timeout
-    requestTimeout: 1000
-  }, function (error) {
+module.exports.index = (event, context, callback) => {
+  if (typeof event.index === 'undefined' || typeof event.type === 'undefined') {
+    const response = {
+      statusCode: 400,
+      body: JSON.stringify({
+        message: 'Must specify index and type in input',
+        input: event,
+      }),
+    };
+
+    callback(null, response);
+    return;
+  }
+  var doc = {body: event};
+  doc.index = doc.body.index;
+  doc.type = doc.body.type;
+  delete doc.body.index;
+  delete doc.body.type;
+
+  client.index(doc, function (error, response) {
     if (error) {
-      pingFailure(event, context, callback);
+      indexFailure(event, callback, error);
     } else {
-      pingSuccess(event, context, callback);
+      indexSuccess(event, callback);
     }
   });
 };
