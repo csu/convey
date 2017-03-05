@@ -32,7 +32,7 @@ var indexFailure = (doc, callback, error) => {
 
 module.exports.index = (event, context, callback) => {
   if (typeof process.env.CONVEY_SECRET !== 'undefined' &&
-      typeof process.env.CONVEY_SECRET !== '' &&
+      process.env.CONVEY_SECRET !== '' &&
         (typeof event.secret === 'undefined' ||
           event.secret !== process.env.CONVEY_SECRET)) {
     const response = {
