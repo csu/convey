@@ -94,6 +94,8 @@ module.exports.index = (event, context, callback) => {
   delete doc.body.index;
   delete doc.body.type;
 
+  doc.time_created = new Date().toISOString();
+
   client.index(doc, function (error, response) {
     if (error) {
       indexFailure(doc, callback, error);
