@@ -43,7 +43,20 @@ module.exports.index = (event, context, callback) => {
     return;
   }
 
-  var body = event.body;
+  try {
+    var body = JSON.parse(event.body);
+  }
+  catch (e) {
+    const response = {
+      statusCode: 500,
+      body: JSON.stringify({
+        message: 'Invalid body'
+      }),
+    };
+
+    callback(null, response);
+    return;
+  }
 
   if (typeof process.env.CONVEY_SECRET !== 'undefined' &&
       process.env.CONVEY_SECRET &&
