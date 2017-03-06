@@ -1,11 +1,104 @@
 'use strict';
 
+/*
+  ES SETUP
+*/
 var elasticsearch = require('elasticsearch');
 var client = new elasticsearch.Client({
   host: process.env.ES_HOST,
   httpAuth: process.env.ES_HTTP_AUTH
 });
 
+/*
+  ERROR HELPERS
+*/
+var errorResponse = (callback, response, message, errorBody) => {
+  if (process.env.CONVEY_ERROR_LOGGING_INDEX &&
+      process.env.CONVEY_ERROR_LOGGING_TYPE) {
+    conveyErrorLogging(callback, response, message, errorBody);
+  }
+  else {
+    callback(null, response);
+  }
+}
+
+var conveyErrorLogging = (callback, response, message, errorBody) => {
+  var errorDoc = {
+    index: process.env.CONVEY_ERROR_LOGGING_INDEX,
+    type: process.env.CONVEY_ERROR_LOGGING_TYPE,
+    body: {},
+  };
+
+  if (typeof errorBody !== 'undefined') {
+    errorDoc.body = errorBody;
+  }
+
+  if (typeof message !== 'undefined') {
+    errorDoc.body.message = message;
+  }
+
+  errorDoc.body.time_created = new Date().toISOString();
+
+  client.index(errorDoc, function (err, res) {
+    callback(null, response);
+  });
+};
+
+/*
+  ERROR STATES
+*/
+var invalidInputError = (callback) => {
+  const message = 'Invalid input';
+  const response = {
+    statusCode: 500,
+    body: JSON.stringify({
+      message: message,
+    }),
+  };
+
+  errorResponse(callback, response, message);
+};
+
+var invalidBodyError = (callback) => {
+  const message = 'Invalid body';
+  const response = {
+    statusCode: 500,
+    body: JSON.stringify({
+      message: message,
+    }),
+  };
+
+  errorResponse(callback, response, message);
+};
+
+var unauthorizedKeyError = (callback) => {
+  const message = 'Unauthorized key';
+  const response = {
+    statusCode: 403,
+    body: JSON.stringify({
+      message: message,
+    }),
+  };
+
+  errorResponse(callback, response, message);
+};
+
+var missingIndexorTypeError = (callback, body) => {
+  const message = 'Must specify index and type in input';
+  const response = {
+    statusCode: 400,
+    body: JSON.stringify({
+      message: message,
+      input: body,
+    }),
+  };
+
+  errorResponse(callback, response, message, { input: body });
+};
+
+/*
+  INDEX RESULTS
+*/
 var indexSuccess = (doc, callback) => {
   const response = {
     statusCode: 200,
@@ -18,28 +111,30 @@ var indexSuccess = (doc, callback) => {
   callback(null, response);
 };
 
-var indexFailure = (doc, callback, error) => {
+var indexFailure = (doc, callback, error, indexResponse) => {
+  const message = 'Index failed with error  ' + error;
+
   const response = {
     statusCode: 400,
     body: JSON.stringify({
-      message: 'Index failed with error  ' + error,
+      message: message,
       doc: doc,
     }),
   };
 
-  callback(null, response);
+  errorResponse(callback, response, message, {
+    doc: doc,
+    index_response: JSON.stringify(indexResponse),
+  });
 };
 
+/*
+  INDEX HANDLER
+*/
 module.exports.index = (event, context, callback) => {
+  // Error checking
   if (!event.body) {
-    const response = {
-      statusCode: 500,
-      body: JSON.stringify({
-        message: 'Invalid input'
-      }),
-    };
-
-    callback(null, response);
+    invalidInputError(callback);
     return;
   }
 
@@ -47,14 +142,7 @@ module.exports.index = (event, context, callback) => {
     var body = JSON.parse(event.body);
   }
   catch (e) {
-    const response = {
-      statusCode: 500,
-      body: JSON.stringify({
-        message: 'Invalid body'
-      }),
-    };
-
-    callback(null, response);
+    invalidBodyError(callback);
     return;
   }
 
@@ -62,32 +150,18 @@ module.exports.index = (event, context, callback) => {
       process.env.CONVEY_SECRET &&
         (typeof body.secret === 'undefined' ||
           body.secret !== process.env.CONVEY_SECRET)) {
-    const response = {
-      statusCode: 403,
-      body: JSON.stringify({
-        message: 'Unauthorized key'
-      }),
-    };
-
-    callback(null, response);
+    unauthorizedKeyError(callback);
     return;
   }
 
   delete body.secret;
 
   if (typeof body.index === 'undefined' || typeof body.type === 'undefined') {
-    const response = {
-      statusCode: 400,
-      body: JSON.stringify({
-        message: 'Must specify index and type in input',
-        input: body,
-      }),
-    };
-
-    callback(null, response);
+    missingIndexorTypeError(callback, body);
     return;
   }
   
+  // Preparing document
   var doc = {body: body};
   doc.index = doc.body.index;
   doc.type = doc.body.type;
@@ -96,9 +170,10 @@ module.exports.index = (event, context, callback) => {
 
   doc.body.time_created = new Date().toISOString();
 
-  client.index(doc, function (error, response) {
+  // Indexing document
+  client.index(doc, function (error, indexResponse) {
     if (error) {
-      indexFailure(doc, callback, error);
+      indexFailure(doc, callback, error, indexResponse);
     } else {
       indexSuccess(doc, callback);
     }
