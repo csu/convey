@@ -10,6 +10,51 @@ var client = new elasticsearch.Client({
 });
 
 /*
+  LOGGING HELPERS
+*/
+var conveyInfoLogging = (message, body) => {
+  var logDoc = {
+    index: process.env.CONVEY_INFO_LOGGING_INDEX,
+    type: process.env.CONVEY_INFO_LOGGING_TYPE,
+    body: {},
+  };
+
+  if (typeof body !== 'undefined' && body) {
+    logDoc.body = body;
+  }
+
+  if (typeof message !== 'undefined' && message) {
+    logDoc.body.message = message;
+  }
+
+  logDoc.body.time_created = new Date().toISOString();
+
+  client.index(logDoc);
+};
+
+var conveyErrorLogging = (callback, response, message, errorBody) => {
+  var errorDoc = {
+    index: process.env.CONVEY_ERROR_LOGGING_INDEX,
+    type: process.env.CONVEY_ERROR_LOGGING_TYPE,
+    body: {},
+  };
+
+  if (typeof errorBody !== 'undefined' && errorBody) {
+    errorDoc.body = errorBody;
+  }
+
+  if (typeof message !== 'undefined' && message) {
+    errorDoc.body.message = message;
+  }
+
+  errorDoc.body.time_created = new Date().toISOString();
+
+  client.index(errorDoc, function (err, res) {
+    callback(null, response);
+  });
+};
+
+/*
   ERROR HELPERS
 */
 var errorResponse = (callback, response, message, errorBody) => {
@@ -21,28 +66,6 @@ var errorResponse = (callback, response, message, errorBody) => {
     callback(null, response);
   }
 }
-
-var conveyErrorLogging = (callback, response, message, errorBody) => {
-  var errorDoc = {
-    index: process.env.CONVEY_ERROR_LOGGING_INDEX,
-    type: process.env.CONVEY_ERROR_LOGGING_TYPE,
-    body: {},
-  };
-
-  if (typeof errorBody !== 'undefined') {
-    errorDoc.body = errorBody;
-  }
-
-  if (typeof message !== 'undefined') {
-    errorDoc.body.message = message;
-  }
-
-  errorDoc.body.time_created = new Date().toISOString();
-
-  client.index(errorDoc, function (err, res) {
-    callback(null, response);
-  });
-};
 
 /*
   ERROR STATES
@@ -132,6 +155,12 @@ var indexFailure = (doc, callback, error, indexResponse) => {
   INDEX HANDLER
 */
 module.exports.index = (event, context, callback) => {
+  // Logging
+  if (process.env.CONVEY_INFO_LOGGING_INDEX &&
+      process.env.CONVEY_INFO_LOGGING_TYPE) {
+    conveyInfoLogging('Request received', null);
+  }
+
   // Error checking
   if (!event.body) {
     invalidInputError(callback);
