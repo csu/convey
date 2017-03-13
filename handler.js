@@ -106,7 +106,7 @@ var unauthorizedKeyError = (callback) => {
   errorResponse(callback, response, message);
 };
 
-var missingIndexorTypeError = (callback, body) => {
+var missingIndexOrTypeError = (callback, body) => {
   const message = 'Must specify index and type in input';
   const response = {
     statusCode: 400,
@@ -146,7 +146,7 @@ var indexFailure = (doc, callback, error, indexResponse) => {
   };
 
   errorResponse(callback, response, message, {
-    doc: doc,
+    doc: JSON.stringify(doc),
     index_response: JSON.stringify(indexResponse),
   });
 };
@@ -186,7 +186,7 @@ module.exports.index = (event, context, callback) => {
   delete body.secret;
 
   if (typeof body.index === 'undefined' || typeof body.type === 'undefined') {
-    missingIndexorTypeError(callback, body);
+    missingIndexOrTypeError(callback, body);
     return;
   }
   
